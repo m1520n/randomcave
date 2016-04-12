@@ -1,0 +1,262 @@
+
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Cave generator</title>
+        <style>
+            * { padding: 0; margin: 0; }
+            canvas { background: #27ae60; display: block; margin: 0 auto; }
+            input {
+                width: 100px;
+            }
+            #settings {
+                width: 1536px;
+                height:50px;
+                display: block;
+                margin: 5 auto;
+                font-family: calibri;
+                font-size: 15;
+                font-weight: bold;
+                color: #fff;
+                background-color: #27ae60;
+            }
+        </style>
+    </head>
+    <body>
+
+    <div id="settings">
+        Fill percent<input id="fill" type="number" min="0" max="100" value=48 onchange="changevalues()">
+        Smoothing iterations<input id="smooth" type="number" min="0" max="100" value=4 onchange="changevalues()">
+        Grid size<input id="grid" type="number" min="1" max="100" value=5 onchange="changevalues()">
+        Width<input id="width" type="number" min="1" max="5000" value=300 onchange="changevalues()">
+        Height<input id="height" type="number" min="1" max="3000" value=200 onchange="changevalues()">
+		Fit on screen<input id="fit" type="checkbox" value=0 onchange="changevalues()">
+    </div>
+        <script>
+var 
+canvas,
+ctx,
+w,
+h,
+map = [],
+fillPercent = 48,
+width = 300,
+height = 200,
+smoothIterations = 4,
+gridSize = 5,
+fit = 0;
+//seed = '',
+//useRandomSeed = true;
+
+function changevalues() {
+		
+    fillPercent = parseInt(document.getElementById("fill").value);
+    smoothIterations = parseInt(document.getElementById("smooth").value);
+    gridSize = parseInt(document.getElementById("grid").value);
+    width = parseInt(document.getElementById("width").value);
+    height = parseInt(document.getElementById("height").value);
+	fit = document.getElementById("fit").checked;
+	
+	if (fit == true) {
+		width = window.innerWidth * 0.8 / gridSize;
+		height = window.innerHeight * 0.8 / gridSize;
+	} else {
+		width = 300;
+		height = 200;
+	}
+	
+    ctx.fillRect(0, 0, w, h);
+    map = [];
+    randomFillMap(map);
+    for (var i = 0; i < smoothIterations; i++) {
+        smoothMap(map);    
+    }
+    drawCave(gridSize);
+}
+            
+function drawCave(gridSize) {
+    for (x = 0; x < width; x ++) {
+        for (y = 0; y < height; y ++) {
+            ctx.save();
+            if (map[y][x] == 1) {
+                //ctx.linewidth = 0;
+                ctx.fillStyle = "#000";
+                ctx.fillRect(x * gridSize, y * gridSize,  gridSize, gridSize);
+            } else {
+                //ctx.linewidth = 0;
+                ctx.fillStyle = "#fff";
+                ctx.fillRect(x * gridSize, y * gridSize,  gridSize, gridSize);
+            }
+        }
+    }
+}
+            
+function getRandom(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function randomFillMap(array) {
+    for (x = 0; x < height; x ++) {
+        array[x] = [];
+        for (y = 0; y < width; y ++) {
+            if (x == 0 || x == height - 1 || y == 0  || y == width - 1) {
+                array[x][y] = 1;
+            } else {
+                array[x][y] = (getRandom(0,100) < fillPercent) ? 1 : 0;
+            }
+        }
+    }
+    return array;
+}
+
+function getSurroundingWallcount(array, gridX, gridY) {
+    var wallCount = 0;
+    for (var neighbourX = gridX - 1; neighbourX <= gridX + 1; neighbourX ++) {
+        for (var neighbourY = gridY - 1; neighbourY <= gridY + 1; neighbourY ++) {
+            if (neighbourX >= 0 && neighbourX < height && neighbourY >=0 && neighbourY < width) {
+                if (neighbourX != gridX || neighbourY != gridY) {
+                    wallCount += array[neighbourX][neighbourY];
+                }    
+            } else {
+                wallCount ++;
+            }         
+        }
+    }
+    return wallCount;
+}
+
+function smoothMap(array) {
+    for (var x = 0; x < height; x ++) {
+        for (var y = 0; y < width; y ++) {
+            var neighbourWallTiles = getSurroundingWallcount(array, x,y);
+            
+            if (neighbourWallTiles > 4) {
+                array[x][y] = 1;
+            } else if (neighbourWallTiles < 4) {
+                array[x][y] = 0;
+            }
+        }
+    }
+    return array;
+}
+
+function isInMapRange(x, y) {
+    return x >= 0 && x < width && y>= 0 && y < height;
+}
+            
+function getRegionTiles(array, startX, startY) {
+    var tiles = [];
+    var mapFlags = [width,height];
+    var tileType = array[startX, startY];
+    
+    var queue = [];
+    queue.push(startX, startY);
+    mapFlags[width,height] = 1;
+    
+    while (queue.length > 0) {
+        tile = queue.shift();
+        tiles.unshift(tile);
+        
+        for (var x = tile.tileX - 1; x <= tile.tileX + 1; x++) {
+            for (var y = tile.tileY - 1; y <= tile.tileY + 1; y++) {
+                if (isInMapRange(x, y) && (y == tile.tileY || x == tile.tileX)) {
+                    if (mapFlags[x, y] == 0 && map[x, y] == tileType) {
+                        mapFlags[x, y] = 1;
+                        queue.push(x, y);
+                    }        
+                }
+            }
+        }
+    }
+    return tiles;
+}
+            
+function ProcessMap(array) {
+    wallRegions = getRegions[1];
+    
+    var wallThresholdSize = 50;
+    for (wallRegion in wallRegions) {
+        if (wallRegion.length < wallThresholdSize) {
+            for (coord in wallRegion) {
+                array[tile.tileX, tile.tileY] = 0;
+            }
+        }
+    }
+}
+            
+function getRegions(tileType) {
+    var regions = [];
+    var mapFlags = [width, height];
+    
+    for (var x = 0; x < height; x ++) {
+        for (var y = 0; y < width; y ++) {
+            if (mapFlags[x, y] == 0 && map[x, y] == tileType) {
+                newRegion = getRegionTiles(x, y);
+                regions.push(newRegion);
+                
+                for (tile in newRegion) {
+                    mapFlags[tile.tileX, tile.tileY] = 1;
+                }
+            }
+        }
+    }
+    return regions;
+}
+            
+function drawBorder(array) {
+    var borderSize = 5;
+    var borderedMap = [];
+    
+    for (var x = 0; x < height + borderSize * 2; x ++) {
+        for (var y = 0; y < width + borderSize * 2 ; y ++) {
+            if (x >= borderSize && x < height + borderSize && y >= borderSize && y < width + borderSize) {
+                borderedMap[x][y] = array[x - borderSize][y - borderSize];
+            } else {
+                borderedMap[x][y] = 1;
+            }
+        }
+    }
+    return borderedMap;
+}
+            
+function draw(ctx) {
+    ctx.fillRect(0, 0, w, h);
+    cave.draw(ctx);
+}
+            
+function main() {
+    canvas = document.createElement("canvas");
+
+    w = window.innerWidth;
+    h = window.innerHeight;
+
+    canvas.width = w;
+    canvas.height = h;
+
+    ctx = canvas.getContext("2d");
+    
+    document.body.appendChild(canvas);  
+    
+    randomFillMap(map);
+    console.log(map);
+    for (var i = 0; i < smoothIterations; i++) {
+        smoothMap(map);    
+    }
+    drawCave(gridSize);
+}
+            
+function run() {
+    var loop = function() {
+        draw(ctx);
+        window.requestAnimationFrame(loop, canvas);
+    }
+    window.requestAnimationFrame(loop, canvas);
+}
+            
+document.ondomcontentready = main();
+
+</script>
+</div>
+</body>
+</html>
+
